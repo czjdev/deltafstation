@@ -53,6 +53,16 @@ if (-not (Test-Path $dir)) {
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($OutputPath, "$line`n", $utf8NoBom)
 
+# 限制 .htpasswd ACL: 只允许 SYSTEM + Administrators (防本机其他账户读 hash)
+try {
+  & icacls $OutputPath /grant:r 'SYSTEM:(F)' 'Administrators:(F)' /inheritance:r 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "⚠️ icacls 设置失败 (exit $LASTEXITCODE), 文件仍按父目录默认权限" -ForegroundColor Yellow
+  }
+} catch {
+  Write-Host "⚠️ ACL 限制失败: $_" -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "✓ 已写入 $OutputPath" -ForegroundColor Green
 Write-Host "  内容: ${user}:{SHA}<hash>"
