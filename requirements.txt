@@ -30,3 +30,6 @@ openai>=1.40.0
 
 # Project core
 deltafq>=1.0.2
+
+# Production WSGI server (Windows-friendly, used by deploy/windows/install.ps1)
+waitress>=3.0.0
