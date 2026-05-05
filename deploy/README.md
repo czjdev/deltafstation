@@ -167,7 +167,7 @@ Remove-Item -Recurse -Force C:\deltafstation
 |---|---|
 | `Get-Service DeltaFStation` 显示 Stopped | `Get-Content C:\deltafstation\logs\server-stderr.log -Tail 100` 看错误；多半是 venv 装包失败或端口占用 |
 | 浏览器 502 Bad Gateway | (1) `Get-Content C:\nginx\logs\error.log -Tail 50` (2) `netstat -an \| findstr 8000` 确认 waitress 在监听 |
-| 401 一直弹密码框 | (1) `.htpasswd` 路径必须用正斜杠 `C:/nginx/conf/.htpasswd`（nginx.conf 第 22 行附近）(2) 重跑 `gen-htpasswd.ps1` 重新写一次 |
+| 401 一直弹密码框 | (1) `.htpasswd` 路径必须用正斜杠 `C:/nginx/conf/.htpasswd`（在 nginx.conf 中搜 `auth_basic_user_file`）(2) 重跑 `gen-htpasswd.ps1` 重新写一次 |
 | 公网访问不通 | (1) `Get-NetFirewallRule -DisplayName "DeltaFStation HTTP"` (2) 天翼云控制台安全组入站 TCP/18080 是否开 (3) 公网 IP 是否对（云服务器面板查一下）|
 | SSE 日志/AI 流卡住不刷 | nginx.conf 里 SSE 两个 location（`/api/logs/stream` 和 `/api/ai/`）是否都有 `proxy_buffering off` |
 | miniQMT 数据拉不到 | (1) QMT 客户端是否登录中 (2) `xtquant` 是否在 `.venv\Lib\site-packages\xtquant` (3) 异地登录是否解锁 |
