@@ -187,10 +187,17 @@ $waitressArgs = "--listen=127.0.0.1:$WaitressPort --threads=$WaitressThreads --c
 Write-Host "[7/7] 启动服务 ..." -ForegroundColor Yellow
 & $NssmPath start $ServiceName
 
-Start-Sleep -Seconds 2
-$svc = Get-Service -Name $ServiceName
-if ($svc.Status -ne "Running") {
-  Write-Host "❌ 服务未进入 Running 状态, 当前: $($svc.Status)" -ForegroundColor Red
+# 等 waitress 实际绑定端口（仅看 SCM Running 不够，因为 NSSM 崩溃重启循环也会瞬时 Running）
+$deadline = (Get-Date).AddSeconds(15)
+$bound = $false
+while ((Get-Date) -lt $deadline) {
+  $tnc = Test-NetConnection -ComputerName 127.0.0.1 -Port $WaitressPort `
+            -InformationLevel Quiet -WarningAction SilentlyContinue
+  if ($tnc) { $bound = $true; break }
+  Start-Sleep -Milliseconds 500
+}
+if (-not $bound) {
+  Write-Host "❌ 服务未在 15s 内监听 127.0.0.1:$WaitressPort" -ForegroundColor Red
   Write-Host "   排查: Get-Content $ProjectRoot\logs\server-stderr.log -Tail 50" -ForegroundColor Red
   exit 1
 }
@@ -214,7 +221,7 @@ Write-Host "  5. 浏览器访问 http://<公网IP>:18080"
 wc -l deploy/windows/install.ps1
 grep -c "NssmPath\|waitress-serve\|AppRotateFiles\|SERVICE_AUTO_START" deploy/windows/install.ps1
 ```
-Expected：行数约 95；关键字命中数 ≥ 4。
+Expected：行数约 130（含端口探测块）；关键字命中数 ≥ 4。
 
 - [ ] **Step 3: Commit**
 
@@ -247,7 +254,8 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 param(
   [string]$ProjectRoot = "C:\deltafstation",
   [string]$NssmPath    = "C:\nssm\nssm.exe",
-  [string]$ServiceName = "DeltaFStation"
+  [string]$ServiceName = "DeltaFStation",
+  [int]$WaitressPort   = 8000
 )
 
 $ErrorActionPreference = "Stop"
@@ -266,10 +274,17 @@ Write-Host "[3/4] pip install -r requirements.txt ..." -ForegroundColor Yellow
 Write-Host "[4/4] Starting $ServiceName ..." -ForegroundColor Yellow
 & $NssmPath start $ServiceName
 
-Start-Sleep -Seconds 2
-$svc = Get-Service -Name $ServiceName
-if ($svc.Status -ne "Running") {
-  Write-Host "❌ 服务未进入 Running 状态, 当前: $($svc.Status)" -ForegroundColor Red
+# 等 waitress 实际绑定端口（仅看 SCM Running 不够，因为 NSSM 崩溃重启循环也会瞬时 Running）
+$deadline = (Get-Date).AddSeconds(15)
+$bound = $false
+while ((Get-Date) -lt $deadline) {
+  $tnc = Test-NetConnection -ComputerName 127.0.0.1 -Port $WaitressPort `
+            -InformationLevel Quiet -WarningAction SilentlyContinue
+  if ($tnc) { $bound = $true; break }
+  Start-Sleep -Milliseconds 500
+}
+if (-not $bound) {
+  Write-Host "❌ 服务未在 15s 内监听 127.0.0.1:$WaitressPort" -ForegroundColor Red
   Write-Host "   排查: Get-Content $ProjectRoot\logs\server-stderr.log -Tail 50" -ForegroundColor Red
   exit 1
 }
@@ -284,7 +299,7 @@ Write-Host "✓ 升级完成" -ForegroundColor Green
 wc -l deploy/windows/upgrade.ps1
 grep -E "NssmPath stop|git pull|pip install|NssmPath start" deploy/windows/upgrade.ps1
 ```
-Expected：行数约 30；4 个关键字各命中 1 行。
+Expected：行数约 45（含端口探测块）；4 个关键字各命中 1 行。
 
 - [ ] **Step 3: Commit**
 
