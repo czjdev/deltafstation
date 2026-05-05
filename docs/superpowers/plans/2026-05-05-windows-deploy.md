@@ -260,13 +260,28 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# 升级中断时打印恢复命令（不自动重启，避免掩盖真实失败原因）
+trap {
+  Write-Host ""
+  Write-Host "⚠️ 升级中断: $($_.Exception.Message)" -ForegroundColor Red
+  Write-Host "   服务可能停止; 恢复: & '$NssmPath' start $ServiceName" -ForegroundColor Yellow
+  exit 1
+}
+
 Set-Location $ProjectRoot
+
+# 防止未提交改动 / merge conflict 让 pull 静默失败
+$dirty = git status --porcelain
+if ($dirty) {
+  throw "工作目录有未提交改动, 请先提交或 git stash:`n$dirty"
+}
 
 Write-Host "[1/4] Stopping $ServiceName ..." -ForegroundColor Yellow
 & $NssmPath stop $ServiceName | Out-Null
 
-Write-Host "[2/4] git pull ..." -ForegroundColor Yellow
-git pull
+Write-Host "[2/4] git pull --ff-only ..." -ForegroundColor Yellow
+git pull --ff-only
+if ($LASTEXITCODE -ne 0) { throw "git pull 失败 (可能 merge conflict)" }
 
 Write-Host "[3/4] pip install -r requirements.txt ..." -ForegroundColor Yellow
 & "$ProjectRoot\.venv\Scripts\pip.exe" install -r requirements.txt
@@ -299,7 +314,7 @@ Write-Host "✓ 升级完成" -ForegroundColor Green
 wc -l deploy/windows/upgrade.ps1
 grep -E "NssmPath stop|git pull|pip install|NssmPath start" deploy/windows/upgrade.ps1
 ```
-Expected：行数约 45（含端口探测块）；4 个关键字各命中 1 行。
+Expected：行数约 62（含 trap + 脏检查 + 端口探测）；4 个关键字各命中 1 行。
 
 - [ ] **Step 3: Commit**
 
