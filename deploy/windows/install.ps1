@@ -16,7 +16,7 @@ param(
   [string]$NssmPath      = "C:\nssm\nssm.exe",
   [string]$PythonExe     = "python.exe",
   [string]$ServiceName   = "DeltaFStation",
-  [int]$WaitressPort     = 8000,
+  [int]$WaitressPort     = 8001,
   [int]$WaitressThreads  = 4
 )
 
@@ -127,5 +127,5 @@ Write-Host "     Copy-Item .\deploy\windows\nginx.conf C:\nginx\conf\nginx.conf"
 Write-Host "  2. 生成 .htpasswd:"
 Write-Host "     .\deploy\windows\gen-htpasswd.ps1"
 Write-Host "  3. 启动 nginx 并注册成自启服务（命令见 deploy\README.md step 4）"
-Write-Host "  4. Windows 防火墙 + 天翼云安全组放行 18080"
-Write-Host "  5. 浏览器访问 http://<公网IP>:18080"
+Write-Host "  4. Windows 防火墙 + 天翼云安全组放行 18081"
+Write-Host "  5. 浏览器访问 http://<公网IP>:18081"

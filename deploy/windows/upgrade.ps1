@@ -9,7 +9,7 @@ param(
   [string]$ProjectRoot = "C:\deltafstation",
   [string]$NssmPath    = "C:\nssm\nssm.exe",
   [string]$ServiceName = "DeltaFStation",
-  [int]$WaitressPort   = 8000
+  [int]$WaitressPort   = 8001
 )
 
 $ErrorActionPreference = "Stop"

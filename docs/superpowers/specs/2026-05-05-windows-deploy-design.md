@@ -23,7 +23,7 @@
 |---|---|
 | 目标 OS | Windows Server 2022 |
 | 云厂商 | 天翼云 |
-| 域名 / HTTPS | 无域名 → HTTP + 端口换 18080 |
+| 域名 / HTTPS | 无域名 → HTTP + 端口换 18081 |
 | 访问控制 | nginx Basic Auth |
 | miniQMT 实盘 | 启用 |
 | 代码源 | git clone `git@github.com:czjdev/deltafstation.git`（私有仓库 + SSH deploy key）|
@@ -46,28 +46,28 @@
                             公网 IP: <YOUR_PUBLIC_IP>
 
          [浏览器]                               [安全组放行]
-            │                                    TCP 18080
-            │  http://<IP>:18080/...
+            │                                    TCP 18081
+            │  http://<IP>:18081/...
             │  Authorization: Basic <base64>
             ▼
      ┌──────────────────────────────────────────────┐
      │  nginx for Windows                           │
      │  C:\nginx\conf\nginx.conf                    │
-     │   • listen 18080                             │
+     │   • listen 18081                             │
      │   • auth_basic + .htpasswd                   │
-     │   • location /        → 反代 127.0.0.1:8000  │
+     │   • location /        → 反代 127.0.0.1:8001  │
      │   • location /api/logs/stream → SSE          │
      │     proxy_buffering off                      │
      │   • location /api/ai/  → SSE 同上            │
      └──────────────────────────────────────────────┘
                        │
-                       ▼ 127.0.0.1:8000 (内网回环, 不对外)
+                       ▼ 127.0.0.1:8001 (内网回环, 不对外)
      ┌──────────────────────────────────────────────┐
      │  waitress (单进程 4 线程)                    │
      │  服务名: DeltaFStation (NSSM 注册, 开机自启) │
      │  WorkingDir: C:\deltafstation                │
      │  ExecStart: .venv\Scripts\waitress-serve.exe │
-     │              --listen=127.0.0.1:8000         │
+     │              --listen=127.0.0.1:8001         │
      │              --threads=4                     │
      │              --call backend.app:create_app   │
      │  Stdout/Stderr → C:\deltafstation\logs\      │
@@ -127,7 +127,7 @@ param(
   [string]$NssmPath      = "C:\nssm\nssm.exe",
   [string]$PythonExe     = "python.exe",
   [string]$ServiceName   = "DeltaFStation",
-  [int]$WaitressPort     = 8000,
+  [int]$WaitressPort     = 8001,
   [int]$WaitressThreads  = 4
 )
 ```
@@ -141,7 +141,7 @@ param(
 6. 卸载旧服务（幂等）：若 `sc.exe query DeltaFStation` 存在则 stop + remove
 7. NSSM 注册 `DeltaFStation`：
    - exe：`.venv\Scripts\waitress-serve.exe`
-   - args：`--listen=127.0.0.1:8000 --threads=4 --call backend.app:create_app`
+   - args：`--listen=127.0.0.1:8001 --threads=4 --call backend.app:create_app`
    - `AppDirectory`：`$ProjectRoot`
    - `AppEnvironmentExtra`：`PYTHONUNBUFFERED=1` `FLASK_ENV=production`
    - `Start`：`SERVICE_AUTO_START`
@@ -149,7 +149,7 @@ param(
    - `AppRotateFiles` `1` + `AppRotateOnline` `1` + `AppRotateBytes` `10485760`（10MB 轮转）
    - `AppExit Default Restart` + `AppRestartDelay 5000`（崩溃 5s 自愈）
 8. NSSM start
-9. 末尾打印下一步：配 nginx → 生成 .htpasswd → 安全组放行 18080 → 浏览器访问
+9. 末尾打印下一步：配 nginx → 生成 .htpasswd → 安全组放行 18081 → 浏览器访问
 
 ### 4.3 与 tq2 install.ps1 的差异
 - 砍 `alembic upgrade head`（无 DB）
@@ -161,7 +161,7 @@ param(
 ## 5. nginx.conf 设计
 
 ### 5.1 关键配置
-- `listen 18080`
+- `listen 18081`
 - `auth_basic "DeltaFStation"` + `auth_basic_user_file C:/nginx/conf/.htpasswd`（**正斜杠**，Windows nginx 要求）
 - `client_max_body_size 50M`
 - `proxy_http_version 1.1` + `proxy_set_header Connection ""`（HTTP/1.1 chunked 透传）
@@ -169,9 +169,9 @@ param(
 ### 5.2 location 划分
 | location | 反代 | 特殊设置 |
 |---|---|---|
-| `/` | `http://127.0.0.1:8000` | 默认；`Host`、`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto` |
-| `/api/logs/stream` | `http://127.0.0.1:8000` | `proxy_buffering off; proxy_cache off; proxy_read_timeout 24h; chunked_transfer_encoding on` |
-| `/api/ai/` | `http://127.0.0.1:8000` | `proxy_buffering off; proxy_cache off; proxy_read_timeout 600s` |
+| `/` | `http://127.0.0.1:8001` | 默认；`Host`、`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto` |
+| `/api/logs/stream` | `http://127.0.0.1:8001` | `proxy_buffering off; proxy_cache off; proxy_read_timeout 24h; chunked_transfer_encoding on` |
+| `/api/ai/` | `http://127.0.0.1:8001` | `proxy_buffering off; proxy_cache off; proxy_read_timeout 600s` |
 
 ### 5.3 nginx 也注册成 Windows 自启服务
 nginx for Windows 默认不开机自启。在 `deploy/README.md` step 4 末尾给出 NSSM 注册 nginx 的命令（不放进 install.ps1，避免对 nginx 安装路径强假设）：
@@ -186,7 +186,7 @@ nginx for Windows 默认不开机自启。在 `deploy/README.md` step 4 末尾�
 ### 5.4 与 tq2 nginx.conf 的差异
 | 维度 | tq2 | deltafstation |
 |---|---|---|
-| 端口 | 80 | **18080** |
+| 端口 | 80 | **18081** |
 | Basic Auth | 无 | **有** |
 | 前端服务 | `root C:/.../frontend/dist; try_files` 直出 Vue SPA | **全部反代** Flask（Jinja 渲染 + send_static_file）|
 | 流式接口 | `/ws/`（WebSocket）| `/api/logs/stream` + `/api/ai/`（SSE，关 buffering）|
@@ -242,7 +242,7 @@ NSSM stop → NSSM remove confirm
 2. 拉代码 (git clone git@github.com:czjdev/deltafstation.git)
 3. 一键安装服务 (.\deploy\windows\install.ps1)
 4. 配置 nginx 反代（含用 NSSM 把 nginx 也注册成自启服务）
-5. Windows 防火墙 + 天翼云安全组放行 18080
+5. Windows 防火墙 + 天翼云安全组放行 18081
 6. 验证
 7. miniQMT 实盘配置（可选 → 引导到 deploy/miniqmt/README.md）
 8. 升级 / 卸载
@@ -254,7 +254,7 @@ NSSM stop → NSSM remove confirm
 
 1. **revoke 老 LLM key** —— `config/config.py:12` 的 `sk-aa5be...` 已在 git 历史和聊天里出现，部署前必须吊销 + 换新 key
 2. **强 Basic Auth 密码** —— `gen-htpasswd.ps1` 强制 ≥20 字符，避免暴力破解
-3. **服务端口 18080**，**安全组只放 18080**，Flask:8000 / QMT 内部端口都不对外
+3. **服务端口 18081**，**安全组只放 18081**，Flask:8001 / QMT 内部端口都不对外
 4. **天翼云 RDP 端口改非 3389**（Windows 远程桌面是被扫得最猛的入口）
 5. **QMT 客户端机器锁屏**：离开服务器要锁屏，避免 QMT 窗口被远程桌面看到/操作
 6. **logs 目录定期清理**：NSSM 已配 10MB 日志轮转；`data/results` 需自行归档
@@ -265,9 +265,9 @@ NSSM stop → NSSM remove confirm
 | 现象 | 排查 |
 |---|---|
 | 服务启不来 | `Get-Service DeltaFStation` + `Get-Content C:\deltafstation\logs\server-stderr.log -Tail 100` |
-| 浏览器 502 | `C:\nginx\logs\error.log` + `netstat -an \| findstr 8000` 确认 waitress 在监听 |
+| 浏览器 502 | `C:\nginx\logs\error.log` + `netstat -an \| findstr 8001` 确认 waitress 在监听 |
 | 401 一直弹密码框 | 确认 `.htpasswd` 路径用正斜杠 `C:/nginx/conf/.htpasswd`，重跑 `gen-htpasswd.ps1` |
-| 公网访问不通 | (1) `Get-NetFirewallRule -DisplayName "DeltaFStation HTTP"` (2) 天翼云控制台安全组入站 TCP/18080 |
+| 公网访问不通 | (1) `Get-NetFirewallRule -DisplayName "DeltaFStation HTTP"` (2) 天翼云控制台安全组入站 TCP/18081 |
 | SSE 日志/AI 流卡住 | nginx.conf 里 SSE location 是否 `proxy_buffering off` |
 | miniQMT 数据拉不到 | QMT 客户端是否登录 + xtquant 是否拷到 venv + 异地登录是否解锁 |
 | pip 装包慢/失败 | 临时换源 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple ...` |
@@ -290,10 +290,27 @@ NSSM stop → NSSM remove confirm
 ## 12. 验收标准
 
 - 在天翼云 Windows Server 2022 上从 0 开始，按 `deploy/README.md` 走完，能看到：
-  - 浏览器 `http://<公网IP>:18080` 弹 Basic Auth 密码框
+  - 浏览器 `http://<公网IP>:18081` 弹 Basic Auth 密码框
   - 输入密码后看到 DeltaFStation 主页
   - SSE 日志流实时刷新
   - AI Agent 对话流式输出
   - （启用 miniQMT 后）能拉 A 股 K 线 + 下 1 手 ETF 测试单
 - 重启云服务器后服务自动恢复
 - `upgrade.ps1` 一次成功完成升级流程
+
+## 13. 修订记录
+
+### 2026-05-05 端口冲突调整：18080→18081，8000→8001
+
+**原因**：实际部署目标云服务器（tq-cloud, 180.163.75.221）已部署 tq_option_system2，nginx 在 18080 监听，后端 uvicorn 占用 8000。原 spec 端口选择与现有租户冲突。
+
+**调整**：
+- 对外端口 18080 → **18081**
+- waitress 内部端口 8000 → **8001**
+- nginx 拆分模式：`C:\nginx\conf\nginx.conf` 改为 `include conf.d/*.conf`，每个 app 独立 conf 文件
+  - tq2: `conf.d/tq2.conf`（保留原 18080 + 8000 配置）
+  - deltafstation: `conf.d/deltafstation.conf`（新加 18081 + 8001 配置）
+
+**影响**：
+- 所有部署文档 / 脚本中 18080 / 8000 已批量替换；功能逻辑不变
+- 如未来部署到独立机器，把 install.ps1 的 `$WaitressPort` 默认值和 nginx.conf 里 `listen` 行改回 18080/8000 即可
