@@ -93,11 +93,12 @@ def create_app() -> Flask:
     cfg_cls = project_config.get(cfg_name) or project_config.get('default')
     app.config.from_object(cfg_cls)
 
-    # 显式连接 miniQMT 的 xtdata IPC（默认 58600；xtquant 默认 58610 与部分券商 QMT 不匹配）
-    # 通过环境变量 MINIQMT_PORT 可覆盖；非 miniqmt 部署不影响（reconnect 失败仅打印告警）
+    # 显式连接 miniQMT 的 xtdata IPC
+    # 默认 58610 (xtquant + miniquote 服务). 如果用 XtItClient 模式应改成 58600,
+    # 通过环境变量 MINIQMT_PORT 覆盖. 非 miniqmt 部署不影响 (reconnect 失败只告警)
     try:
         from xtquant import xtdata as _xtdata
-        _miniqmt_port = int(os.environ.get('MINIQMT_PORT', '58600'))
+        _miniqmt_port = int(os.environ.get('MINIQMT_PORT', '58610'))
         _xtdata.reconnect('localhost', _miniqmt_port)
         print(f"[xtquant] reconnected to localhost:{_miniqmt_port}")
     except Exception as _e:
