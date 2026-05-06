@@ -1,4 +1,4 @@
-# DeltaFStation Windows Server 2022 一键安装脚本
+﻿# DeltaFStation Windows Server 2022 一键安装脚本
 # 在管理员 PowerShell 中运行
 #
 # 前置（自行安装）:

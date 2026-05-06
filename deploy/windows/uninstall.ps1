@@ -1,4 +1,4 @@
-# DeltaFStation 卸载脚本
+﻿# DeltaFStation 卸载脚本
 # 仅移除 NSSM 注册的 Windows 服务；代码 / venv / data / nginx 都保留
 #
 # Usage:

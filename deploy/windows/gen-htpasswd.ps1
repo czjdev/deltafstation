@@ -1,4 +1,4 @@
-# 生成 nginx Basic Auth 密码文件 .htpasswd
+﻿# 生成 nginx Basic Auth 密码文件 .htpasswd
 # 用 PowerShell 内置 .NET API, 不依赖 Apache htpasswd.exe
 # 输出格式: <user>:{SHA}<base64-of-sha1-of-password>  (nginx for Windows 支持)
 #

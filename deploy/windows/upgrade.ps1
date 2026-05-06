@@ -1,4 +1,4 @@
-# DeltaFStation 升级脚本
+﻿# DeltaFStation 升级脚本
 # 流程: 停服务 → git pull → pip install → 启服务
 #
 # Usage:

@@ -31,5 +31,8 @@ openai>=1.40.0
 # Project core
 deltafq>=1.0.2
 
+# Technical analysis (used by backend; was missing from original requirements)
+TA-Lib>=0.6.0
+
 # Production WSGI server (Windows-friendly, used by deploy/windows/install.ps1)
 waitress>=3.0.0

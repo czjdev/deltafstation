@@ -314,3 +314,22 @@ NSSM stop → NSSM remove confirm
 **影响**：
 - 所有部署文档 / 脚本中 18080 / 8000 已批量替换；功能逻辑不变
 - 如未来部署到独立机器，把 install.ps1 的 `$WaitressPort` 默认值和 nginx.conf 里 `listen` 行改回 18080/8000 即可
+
+### 2026-05-06 实际部署中发现的额外问题修复
+
+**.ps1 文件改用 UTF-8 with BOM**：
+- 原 spec 假设 UTF-8 无 BOM，但 Windows Server 中文 locale 上的 PowerShell 5.1 默认按 GBK 解码 UTF-8 无 BOM 文件，含中文的 Write-Host 字符串会被截断导致 parse 失败
+- 修复：所有 `deploy/windows/*.ps1` 改成 UTF-8 with BOM（PS 5.1 + PS 7 都能正确识别）
+
+**`requirements.txt` 补 TA-Lib**：
+- backend 代码用了 `talib`（技术分析库）但原 requirements.txt 没列，install.ps1 之后 waitress 启动失败
+- 修复：追加 `TA-Lib>=0.6.0`（PyPI 现在 Windows py3.11+ 有 wheel）
+
+**Python 3.13 不兼容**：
+- 原 spec 写 Python 3.11+，但当 conda base 是 3.13 时 `numpy==1.24.3` 等 pinned 老版本无 Windows wheel
+- 临时方案：部署用 conda 创建 py3.11 env (`conda create -n delta python=3.11`) 作为 install.ps1 的 -PythonExe
+- 长期方案：把 requirements.txt 的 pinned `==` 放宽到 `>=`，或显式说明 Python 3.11 而非 3.11+
+
+**nginx 与既有租户共存**：
+- tq-cloud 上 tq2 的 nginx 是裸进程（4/29 由 administrator 启动），后续 `nginx -s reload` 会因会话 SID 不匹配报 "Access is denied"
+- 处理：把 nginx 也用 NSSM 注册成 LocalSystem 服务，统一进程管理
