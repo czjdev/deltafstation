@@ -68,6 +68,7 @@ def set_strategy(account_id):
                 pass
         signal_interval = (data.get('signal_interval') or '1d').lower()
         lookback_bars = int(data.get('lookback_bars') or 50)
+        data_source = (data.get('data_source') or 'miniqmt').lower()
         try:
             StrategyEngine.start(
                 account_id=account_id,
@@ -80,6 +81,7 @@ def set_strategy(account_id):
                 interval=10.0,
                 order_amount=order_amount,
                 state=engine_state,
+                data_source=data_source,
             )
         except Exception as e:
             return jsonify({'error': str(e)}), 500

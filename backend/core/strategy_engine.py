@@ -73,14 +73,21 @@ class StrategyEngine:
     def start(cls, account_id: str, strategy_id: str, symbol: str, initial_capital: float,
               commission: float = 0.001, signal_interval: str = "1d", lookback_bars: int = 100,
               interval: float = 10.0, order_amount: Optional[float] = None,
-              state: Optional[dict] = None) -> None:
-        """启动指定账户的策略引擎，可选从 state 恢复资金/持仓/订单等。"""
+              state: Optional[dict] = None, data_source: str = "miniqmt") -> None:
+        """启动指定账户的策略引擎，可选从 state 恢复资金/持仓/订单等。
+
+        data_source: 'miniqmt' (默认) 或 'yfinance'. 国内云上 yfinance 通常拉不通.
+        """
         if account_id in cls._runs:
             cls.stop(account_id)
         strat = load_strategy_class(strategy_id)(name=strategy_id)
         if order_amount is not None:
             strat.order_amount = order_amount
         engine = LiveEngine(symbol=symbol, interval=interval, lookback_bars=lookback_bars, signal_interval=signal_interval)
+        if data_source == "miniqmt":
+            engine.set_data_gateway("miniqmt", interval=5.0, mode="poll")
+        else:
+            engine.set_data_gateway(data_source, interval=interval)
         engine.set_trade_gateway("paper", initial_capital=initial_capital, commission=commission)
         # deltafq 在 _ensure_gateways() 时才创建 _trade_gw/_engine，必须先调用再恢复，否则订单历史进不了引擎
         if getattr(engine, "_ensure_gateways", None):
