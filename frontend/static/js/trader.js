@@ -943,7 +943,11 @@ const TraderApp = {
                 const postRes = await apiRequest(`/api/data/symbols/${encodeURIComponent(sym)}/files`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ start_date: start, end_date: end })
+                    body: JSON.stringify({
+                        start_date: start,
+                        end_date: end,
+                        data_source: TraderApp.state.currentDataSource
+                    })
                 });
                 if (!postRes.ok) return null;
                 filename = postRes.data.filename || postRes.data.id;
